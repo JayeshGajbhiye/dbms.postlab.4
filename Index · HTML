@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ContactVault</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      --ink:    #0f0e0d;
+      --paper:  #f6f3ee;
+      --cream:  #ede9e0;
+      --rust:   #c0440e;
+      --rust2:  #8c3208;
+      --sage:   #3d5a45;
+      --gold:   #c8922a;
+      --border: rgba(15,14,13,.14);
+      --shadow: 0 2px 12px rgba(15,14,13,.10);
+      --r:      12px;
+      --fh:     "DM Serif Display", Georgia, serif;
+      --fb:     "DM Sans", system-ui, sans-serif;
+      --ease:   .22s cubic-bezier(.4,0,.2,1);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: var(--fb); background: var(--paper); color: var(--ink); min-height: 100vh; font-size: 15px; line-height: 1.6; }
+
+    /* Header */
+    header {
+      background: var(--ink); color: var(--paper);
+      padding: 0 2rem; display: flex; align-items: center;
+      justify-content: space-between; height: 60px;
+      position: sticky; top: 0; z-index: 100;
+    }
+    .logo { font-family: var(--fh); font-size: 1.35rem; }
+    .logo em { color: #e8896a; }
+    nav { display: flex; gap: .4rem; }
+    nav button {
+      background: transparent; border: 1px solid rgba(246,243,238,.2);
+      color: var(--paper); padding: .4rem 1rem; border-radius: 6px;
+      font-family: var(--fb); font-size: .82rem; font-weight: 500;
+      cursor: pointer; transition: var(--ease);
+    }
+    nav button:hover, nav button.active { background: var(--rust); border-color: var(--rust); }
+
+    /* Pages */
+    .page { display: none; padding: 2.5rem 1.5rem; max-width: 900px; margin: 0 auto; }
+    .page.active { display: block; }
+
+    /* Headings */
+    .sh { margin-bottom: 2rem; }
+    .sh h1 { font-family: var(--fh); font-size: 2.2rem; margin-bottom: .3rem; }
+    .sh p  { color: #6b6560; font-size: .92rem; }
+
+    /* Card */
+    .card { background: #fff; border: 1px solid var(--border); border-radius: var(--r); padding: 2rem; box-shadow: var(--shadow); }
+
+    /* Form grid */
+    .fg { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem 1.4rem; }
+    .fg .full { grid-column: 1 / -1; }
+    .fi { display: flex; flex-direction: column; gap: .4rem; }
+    .fi label { font-size: .76rem; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: #5a5450; }
+    .fi label .r { color: var(--rust); }
+    .fi input, .fi textarea, .fi select {
+      border: 1.5px solid var(--border); border-radius: 8px;
+      padding: .65rem .9rem; font-family: var(--fb); font-size: .94rem;
+      background: var(--paper); color: var(--ink); transition: var(--ease); outline: none; width: 100%;
+    }
+    .fi input:focus, .fi textarea:focus, .fi select:focus {
+      border-color: var(--rust); background: #fff;
+      box-shadow: 0 0 0 3px rgba(192,68,14,.1);
+    }
+    .fi textarea { min-height: 120px; resize: vertical; }
+    .fi .em { font-size: .76rem; color: var(--rust); display: none; }
+    .fi.err input, .fi.err textarea { border-color: var(--rust); }
+    .fi.err .em { display: block; }
+
+    /* Buttons */
+    .btn {
+      display: inline-flex; align-items: center; gap: .4rem;
+      padding: .65rem 1.4rem; border: none; border-radius: 8px;
+      font-family: var(--fb); font-size: .88rem; font-weight: 600;
+      cursor: pointer; transition: var(--ease);
+    }
+    .btn-p { background: var(--rust); color: #fff; }
+    .btn-p:hover { background: var(--rust2); transform: translateY(-1px); box-shadow: 0 4px 14px rgba(192,68,14,.3); }
+    .btn-s { background: rgba(15,14,13,.06); color: var(--ink); border: 1px solid var(--border); }
+    .btn-s:hover { background: var(--cream); }
+    .btn-d { background: #fdecea; color: #c0290e; border: 1px solid #f5c2bc; }
+    .btn-d:hover { background: #f5c2bc; }
+    .btn-g { background: var(--sage); color: #fff; }
+    .btn-g:hover { background: #2e4534; }
+    .btn:disabled { opacity: .5; cursor: not-allowed; transform: none !important; }
+    .btn-sm { padding: .32rem .7rem; font-size: .78rem; border-radius: 6px; }
+    .fa { margin-top: 1.6rem; display: flex; gap: 1rem; align-items: center; }
+
+    /* Toast */
+    #tc { position: fixed; bottom: 1.5rem; right: 1.5rem; z-index: 999; display: flex; flex-direction: column; gap: .6rem; }
+    .toast {
+      display: flex; align-items: center; gap: .6rem;
+      padding: .8rem 1.1rem; border-radius: 10px; font-size: .88rem; font-weight: 500;
+      box-shadow: 0 4px 20px rgba(0,0,0,.14); min-width: 240px;
+      animation: sIn .3s ease;
+    }
+    .toast.ok  { background: #1a3d26; color: #c6f0d4; }
+    .toast.err { background: #3d1a1a; color: #f5c2bc; }
+    @keyframes sIn { from { opacity:0; transform: translateX(20px); } to { opacity:1; transform: none; } }
+
+    /* Stats */
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 1rem; margin-bottom: 1.8rem; }
+    .sc { background: #fff; border: 1px solid var(--border); border-radius: var(--r); padding: 1rem 1.2rem; text-align: center; }
+    .sc .n { font-family: var(--fh); font-size: 2.1rem; line-height: 1; margin-bottom: .2rem; }
+    .sc .l { font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: #7a7470; }
+    .sc.rust .n { color: var(--rust); } .sc.gold .n { color: var(--gold); } .sc.sage .n { color: var(--sage); }
+
+    /* Toolbar */
+    .tb { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.2rem; gap: 1rem; flex-wrap: wrap; }
+    .sw { display: flex; align-items: center; gap: .4rem; background: #fff; border: 1.5px solid var(--border); border-radius: 8px; padding: .4rem .8rem; flex: 1; max-width: 300px; }
+    .sw input { border: none; background: transparent; font-family: var(--fb); font-size: .9rem; outline: none; width: 100%; }
+
+    /* Table */
+    .tw { overflow-x: auto; border-radius: var(--r); border: 1px solid var(--border); background: #fff; box-shadow: var(--shadow); }
+    table { width: 100%; border-collapse: collapse; font-size: .87rem; }
+    thead { background: var(--ink); color: var(--paper); }
+    thead th { padding: .75rem 1rem; text-align: left; font-size: .72rem; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; white-space: nowrap; }
+    tbody tr { border-bottom: 1px solid var(--border); transition: background var(--ease); }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: var(--paper); }
+    tbody td { padding: .7rem 1rem; vertical-align: middle; }
+    .tn { font-weight: 600; } .te { color: #5a5450; font-size: .82rem; }
+    .ts { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .badge { display: inline-block; padding: .18rem .5rem; border-radius: 20px; font-size: .71rem; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+    .b-new { background: #fff3cd; color: #856404; }
+    .b-read { background: #d1e7dd; color: #155724; }
+    .b-replied { background: #cfe2ff; color: #084298; }
+    .tac { display: flex; gap: .35rem; }
+    .es { text-align: center; padding: 3rem 1rem; color: #7a7470; }
+    .es .big { font-size: 2.5rem; margin-bottom: .5rem; }
+
+    /* Modal */
+    .mo { display: none; position: fixed; inset: 0; background: rgba(15,14,13,.5); z-index: 200; align-items: center; justify-content: center; padding: 1rem; }
+    .mo.open { display: flex; }
+    .md { background: #fff; border-radius: 14px; width: 100%; max-width: 580px; box-shadow: 0 20px 60px rgba(0,0,0,.2); overflow: hidden; animation: mIn .25s ease; }
+    @keyframes mIn { from { opacity:0; transform: scale(.94); } to { opacity:1; transform: none; } }
+    .mh { background: var(--ink); color: var(--paper); padding: 1.1rem 1.5rem; display: flex; align-items: center; justify-content: space-between; }
+    .mh h2 { font-family: var(--fh); font-size: 1.15rem; }
+    .mc { cursor: pointer; background: transparent; border: none; color: var(--paper); font-size: 1.3rem; opacity: .7; }
+    .mc:hover { opacity: 1; }
+    .mb { padding: 1.5rem; }
+    .mf { padding: .9rem 1.5rem; border-top: 1px solid var(--border); display: flex; gap: .7rem; justify-content: flex-end; }
+
+    .spin { width: 16px; height: 16px; border: 2.5px solid rgba(255,255,255,.4); border-top-color: #fff; border-radius: 50%; animation: sp .7s linear infinite; display: inline-block; }
+    @keyframes sp { to { transform: rotate(360deg); } }
+
+    @media (max-width: 600px) {
+      .fg { grid-template-columns: 1fr; }
+      .fg .full { grid-column: 1; }
+      .sh h1 { font-size: 1.7rem; }
+      .page { padding: 1.5rem 1rem; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Contact<em>Vault</em></div>
+  <nav>
+    <button class="active" onclick="showPage('pg-form', this)">➕ New Entry</button>
+    <button onclick="showPage('pg-dash', this)">📋 Dashboard</button>
+  </nav>
+</header>
+
+<div id="tc"></div>
+
+<!-- ═══════ FORM PAGE ═══════ -->
+<section class="page active" id="pg-form">
+  <div class="sh">
+    <h1>Send a <em>Message</em></h1>
+    <p>Fill in the details — data saves directly to the database.</p>
+  </div>
+  <div class="card">
+    <form id="cForm" novalidate>
+      <div class="fg">
+        <div class="fi" id="fi-name">
+          <label>Full Name <span class="r">*</span></label>
+          <input type="text" id="i-name" placeholder="Jane Smith" />
+          <span class="em">Name must be at least 2 characters.</span>
+        </div>
+        <div class="fi" id="fi-email">
+          <label>Email <span class="r">*</span></label>
+          <input type="email" id="i-email" placeholder="jane@example.com" />
+          <span class="em">Enter a valid email address.</span>
+        </div>
+        <div class="fi" id="fi-phone">
+          <label>Phone</label>
+          <input type="tel" id="i-phone" placeholder="+91 98765 43210" />
+        </div>
+        <div class="fi" id="fi-subject">
+          <label>Subject <span class="r">*</span></label>
+          <input type="text" id="i-subject" placeholder="What's this about?" />
+          <span class="em">Subject must be at least 3 characters.</span>
+        </div>
+        <div class="fi full" id="fi-message">
+          <label>Message <span class="r">*</span></label>
+          <textarea id="i-message" placeholder="Write your message here…"></textarea>
+          <span class="em">Message must be at least 5 characters.</span>
+        </div>
+      </div>
+      <div class="fa">
+        <button type="submit" class="btn btn-p" id="subBtn">Send Message</button>
+        <button type="button" class="btn btn-s" onclick="resetForm()">Clear</button>
+      </div>
+    </form>
+  </div>
+</section>
+
+<!-- ═══════ DASHBOARD PAGE ═══════ -->
+<section class="page" id="pg-dash">
+  <div class="sh">
+    <h1>All <em>Contacts</em></h1>
+    <p>View, edit and delete every saved record.</p>
+  </div>
+  <div class="stats">
+    <div class="sc rust"><div class="n" id="s-total">–</div><div class="l">Total</div></div>
+    <div class="sc gold"><div class="n" id="s-new">–</div><div class="l">New</div></div>
+    <div class="sc sage"><div class="n" id="s-rep">–</div><div class="l">Replied</div></div>
+  </div>
+  <div class="tb">
+    <div class="sw">🔍 <input type="search" id="srch" placeholder="Search…" oninput="filter()" /></div>
+    <button class="btn btn-p" onclick="loadContacts()">↻ Refresh</button>
+  </div>
+  <div class="tw" id="tw">
+    <div class="es"><div class="big">⏳</div><p>Loading…</p></div>
+  </div>
+</section>
+
+<!-- ═══════ EDIT MODAL ═══════ -->
+<div class="mo" id="modal">
+  <div class="md">
+    <div class="mh">
+      <h2>Edit Contact</h2>
+      <button class="mc" onclick="closeModal()">✕</button>
+    </div>
+    <div class="mb">
+      <div class="fg">
+        <input type="hidden" id="e-id" />
+        <div class="fi"><label>Full Name <span class="r">*</span></label><input type="text" id="e-name" /></div>
+        <div class="fi"><label>Email <span class="r">*</span></label><input type="email" id="e-email" /></div>
+        <div class="fi"><label>Phone</label><input type="tel" id="e-phone" /></div>
+        <div class="fi">
+          <label>Status</label>
+          <select id="e-status">
+            <option value="new">New</option>
+            <option value="read">Read</option>
+            <option value="replied">Replied</option>
+          </select>
+        </div>
+        <div class="fi full"><label>Subject <span class="r">*</span></label><input type="text" id="e-subject" /></div>
+        <div class="fi full"><label>Message <span class="r">*</span></label><textarea id="e-message"></textarea></div>
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn btn-s" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-g" onclick="saveEdit()">💾 Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ── API base (same origin, Vercel serverless functions) ──────
+  const API = "/api/contacts";
+
+  // ── Navigation ───────────────────────────────────────────────
+  function showPage(id, btn) {
+    document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+    document.querySelectorAll("nav button").forEach(b => b.classList.remove("active"));
+    document.getElementById(id).classList.add("active");
+    btn.classList.add("active");
+    if (id === "pg-dash") loadContacts();
+  }
+
+  // ── Toast ─────────────────────────────────────────────────────
+  function toast(msg, type = "ok") {
+    const el = document.createElement("div");
+    el.className = `toast ${type}`;
+    el.innerHTML = `<span>${type === "ok" ? "✓" : "✕"}</span> ${msg}`;
+    document.getElementById("tc").appendChild(el);
+    setTimeout(() => el.remove(), 3800);
+  }
+
+  // ── Form validation ───────────────────────────────────────────
+  function vField(id, cond) {
+    document.getElementById("fi-" + id).classList.toggle("err", !cond);
+    return cond;
+  }
+  function resetForm() {
+    document.getElementById("cForm").reset();
+    ["name","email","subject","message"].forEach(f =>
+      document.getElementById("fi-" + f).classList.remove("err"));
+  }
+
+  // ── Submit ────────────────────────────────────────────────────
+  document.getElementById("cForm").addEventListener("submit", async e => {
+    e.preventDefault();
+    const n = document.getElementById("i-name").value;
+    const em = document.getElementById("i-email").value;
+    const ph = document.getElementById("i-phone").value;
+    const s = document.getElementById("i-subject").value;
+    const m = document.getElementById("i-message").value;
+
+    const ok = [
+      vField("name",    n.trim().length >= 2),
+      vField("email",   /\S+@\S+\.\S+/.test(em)),
+      vField("subject", s.trim().length >= 3),
+      vField("message", m.trim().length >= 5),
+    ].every(Boolean);
+    if (!ok) return;
+
+    const btn = document.getElementById("subBtn");
+    btn.disabled = true;
+    btn.innerHTML = `<span class="spin"></span> Sending…`;
+
+    try {
+      const res  = await fetch(API, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: n, email: em, phone: ph, subject: s, message: m }),
+      });
+      const data = await res.json();
+      if (data.success) { toast("Message saved! 🎉"); resetForm(); }
+      else toast((data.errors || [data.error]).join(" "), "err");
+    } catch { toast("Network error — check your connection.", "err"); }
+    finally { btn.disabled = false; btn.innerHTML = "Send Message"; }
+  });
+
+  // ── Load contacts ─────────────────────────────────────────────
+  let all = [];
+  async function loadContacts() {
+    const tw = document.getElementById("tw");
+    tw.innerHTML = `<div class="es"><div class="big">⏳</div><p>Loading…</p></div>`;
+    try {
+      const res  = await fetch(API);
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error);
+      all = data.data;
+      document.getElementById("s-total").textContent = all.length;
+      document.getElementById("s-new").textContent   = all.filter(r => r.status === "new").length;
+      document.getElementById("s-rep").textContent   = all.filter(r => r.status === "replied").length;
+      render(all);
+    } catch(err) {
+      tw.innerHTML = `<div class="es"><div class="big">❌</div><p>${err.message}</p></div>`;
+    }
+  }
+
+  function filter() {
+    const q = document.getElementById("srch").value.toLowerCase();
+    render(all.filter(c =>
+      c.name.toLowerCase().includes(q) ||
+      c.email.toLowerCase().includes(q) ||
+      c.subject.toLowerCase().includes(q)
+    ));
+  }
+
+  function esc(s) {
+    return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  }
+
+  function render(rows) {
+    const tw = document.getElementById("tw");
+    if (!rows.length) {
+      tw.innerHTML = `<div class="es"><div class="big">📭</div><p>No contacts found.</p></div>`;
+      return;
+    }
+    const bm = { new: "b-new", read: "b-read", replied: "b-replied" };
+    const fd = d => new Date(d).toLocaleString("en-IN", { dateStyle:"medium", timeStyle:"short" });
+    tw.innerHTML = `
+      <table>
+        <thead><tr>
+          <th>#</th><th>Name / Email</th><th>Subject</th>
+          <th>Phone</th><th>Status</th><th>Date</th><th>Actions</th>
+        </tr></thead>
+        <tbody>${rows.map((c, i) => `
+          <tr>
+            <td>${i+1}</td>
+            <td><div class="tn">${esc(c.name)}</div><div class="te">${esc(c.email)}</div></td>
+            <td class="ts">${esc(c.subject)}</td>
+            <td>${esc(c.phone||"—")}</td>
+            <td><span class="badge ${bm[c.status]||'b-new'}">${c.status}</span></td>
+            <td>${fd(c.created_at)}</td>
+            <td><div class="tac">
+              <button class="btn btn-s btn-sm" onclick="openEdit(${c.id})">✏️ Edit</button>
+              <button class="btn btn-d btn-sm" onclick="del(${c.id})">🗑</button>
+            </div></td>
+          </tr>`).join("")}
+        </tbody>
+      </table>`;
+  }
+
+  // ── Delete ────────────────────────────────────────────────────
+  async function del(id) {
+    if (!confirm("Delete this contact permanently?")) return;
+    try {
+      const res  = await fetch(`${API}?id=${id}`, { method: "DELETE" });
+      const data = await res.json();
+      if (data.success) { toast("Deleted."); loadContacts(); }
+      else toast(data.error, "err");
+    } catch { toast("Network error.", "err"); }
+  }
+
+  // ── Edit modal ────────────────────────────────────────────────
+  async function openEdit(id) {
+    try {
+      const res  = await fetch(`${API}?id=${id}`);
+      const data = await res.json();
+      if (!data.success) { toast(data.error, "err"); return; }
+      const c = data.data;
+      document.getElementById("e-id").value      = c.id;
+      document.getElementById("e-name").value    = c.name;
+      document.getElementById("e-email").value   = c.email;
+      document.getElementById("e-phone").value   = c.phone || "";
+      document.getElementById("e-subject").value = c.subject;
+      document.getElementById("e-message").value = c.message;
+      document.getElementById("e-status").value  = c.status;
+      document.getElementById("modal").classList.add("open");
+    } catch { toast("Could not load contact.", "err"); }
+  }
+
+  function closeModal() { document.getElementById("modal").classList.remove("open"); }
+  document.getElementById("modal").addEventListener("click", e => { if (e.target === e.currentTarget) closeModal(); });
+
+  async function saveEdit() {
+    const id = document.getElementById("e-id").value;
+    const payload = {
+      name:    document.getElementById("e-name").value,
+      email:   document.getElementById("e-email").value,
+      phone:   document.getElementById("e-phone").value,
+      subject: document.getElementById("e-subject").value,
+      message: document.getElementById("e-message").value,
+      status:  document.getElementById("e-status").value,
+    };
+    try {
+      const res  = await fetch(`${API}?id=${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (data.success) { toast("Updated! ✅"); closeModal(); loadContacts(); }
+      else toast((data.errors || [data.error]).join(" "), "err");
+    } catch { toast("Network error.", "err"); }
+  }
+</script>
+</body>
+</html>
