@@ -1,0 +1,109 @@
+// =============================================================
+//  api/contacts.js
+//  Vercel Serverless Function — handles ALL /api/contacts routes
+//  GET    /api/contacts        → list all
+//  POST   /api/contacts        → create
+//  GET    /api/contacts?id=X   → get one
+//  PUT    /api/contacts?id=X   → update
+//  DELETE /api/contacts?id=X   → delete
+// =============================================================
+
+const mysql = require("mysql2/promise");
+
+// Pool is reused across warm invocations
+let pool;
+function getPool() {
+  if (pool) return pool;
+  pool = mysql.createPool({
+    uri: process.env.DATABASE_URL,
+    ssl: { rejectUnauthorized: false },
+    waitForConnections: true,
+    connectionLimit: 3,
+    connectTimeout: 10000,
+  });
+  return pool;
+}
+
+function validate(body) {
+  const errors = [];
+  if (!body.name    || body.name.trim().length    < 2) errors.push("Name must be at least 2 characters.");
+  if (!body.email   || !/\S+@\S+\.\S+/.test(body.email))  errors.push("Valid email is required.");
+  if (!body.subject || body.subject.trim().length < 3) errors.push("Subject must be at least 3 characters.");
+  if (!body.message || body.message.trim().length < 5) errors.push("Message must be at least 5 characters.");
+  return errors;
+}
+
+function cors(res) {
+  res.setHeader("Access-Control-Allow-Origin",  "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+}
+
+module.exports = async function handler(req, res) {
+  cors(res);
+
+  // Preflight
+  if (req.method === "OPTIONS") return res.status(200).end();
+
+  const id = req.query.id;
+  const db = getPool();
+
+  try {
+    // ── GET ──────────────────────────────────────────────────
+    if (req.method === "GET") {
+      if (id) {
+        const [rows] = await db.query("SELECT * FROM contacts WHERE id = ?", [id]);
+        if (!rows.length) return res.status(404).json({ success: false, error: "Not found." });
+        return res.json({ success: true, data: rows[0] });
+      }
+      const [rows] = await db.query("SELECT * FROM contacts ORDER BY created_at DESC");
+      return res.json({ success: true, data: rows });
+    }
+
+    // ── POST ─────────────────────────────────────────────────
+    if (req.method === "POST") {
+      const body = req.body;
+      const errors = validate(body);
+      if (errors.length) return res.status(400).json({ success: false, errors });
+
+      const { name, email, phone = "", subject, message } = body;
+      const [result] = await db.query(
+        "INSERT INTO contacts (name, email, phone, subject, message) VALUES (?, ?, ?, ?, ?)",
+        [name.trim(), email.trim(), phone.trim(), subject.trim(), message.trim()]
+      );
+      return res.status(201).json({ success: true, message: "Saved!", id: result.insertId });
+    }
+
+    // ── PUT ──────────────────────────────────────────────────
+    if (req.method === "PUT") {
+      if (!id) return res.status(400).json({ success: false, error: "Missing id." });
+      const body = req.body;
+      const errors = validate(body);
+      if (errors.length) return res.status(400).json({ success: false, errors });
+
+      const { name, email, phone = "", subject, message, status = "new" } = body;
+      const safeStatus = ["new", "read", "replied"].includes(status) ? status : "new";
+
+      const [result] = await db.query(
+        "UPDATE contacts SET name=?, email=?, phone=?, subject=?, message=?, status=? WHERE id=?",
+        [name.trim(), email.trim(), phone.trim(), subject.trim(), message.trim(), safeStatus, id]
+      );
+      if (!result.affectedRows) return res.status(404).json({ success: false, error: "Not found." });
+      return res.json({ success: true, message: "Updated!" });
+    }
+
+    // ── DELETE ───────────────────────────────────────────────
+    if (req.method === "DELETE") {
+      if (!id) return res.status(400).json({ success: false, error: "Missing id." });
+      const [result] = await db.query("DELETE FROM contacts WHERE id = ?", [id]);
+      if (!result.affectedRows) return res.status(404).json({ success: false, error: "Not found." });
+      return res.json({ success: true, message: "Deleted." });
+    }
+
+    res.status(405).json({ success: false, error: "Method not allowed." });
+
+  } catch (err) {
+    console.error("DB error:", err.message);
+    res.status(500).json({ success: false, error: "Database error: " + err.message });
+  }
+};
